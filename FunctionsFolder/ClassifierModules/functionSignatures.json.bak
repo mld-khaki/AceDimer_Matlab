@@ -1,0 +1,15 @@
+{
+  "_schemaVersion": "15.4.0",
+  "FCB_NeuronCombinedClassifier_Global2_v15p4":
+  {
+     "inputs":
+     [
+        {"name":"AnalysisInfo", "kind":"required", "type":["struct"], "purpose":"Analysis Parameters and Information"},
+        {"name":"ClassesData" , "kind":"required", "type":["ClassificationData_v15p0"], "purpose":"Training and Testing and Folds data"},
+        {"name":"DispInfoLevel","kind":"ordered",  "type":["struct"], "purpose":"Parameters for displaying the progress during analysis"},
+        {"name":"Options",		"kind":"namevalue","type":["struct"], "purpose":"Options of the Simulation"},
+     ]
+  }
+}
+% {"name":"Name2", "kind":"namevalue", "type":["char", "choices={'Default','Choice1','Choice2'}"]}
+% FCB_NeuronCombinedClassifier_Global2_v15p4(AInfo,CD,DispInfoLevel,Options)
