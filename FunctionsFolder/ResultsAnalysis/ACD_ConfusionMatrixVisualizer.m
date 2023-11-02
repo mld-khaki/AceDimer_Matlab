@@ -5,39 +5,44 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.1 $  $Date: 2021/05/25  11:05 $
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
 
-function TotalConMat = ACD_ConfusionMatrixVisualizer_v16p0(InputResults,Title,InpClassStrings,Top_N_Percent)
+function TotalConMat = ACD_ConfusionMatrixVisualizer_v3p0p0(InputResults,Title,InpClassStrings,Top_N_Percent)
 
 Options = struct;
 
 if exist('Title','var')
 	Options.Dataset = Title;
 end
+
+InpRes = InputResults(end);
+
 Options.GoodAccuracyThreshold = Top_N_Percent;
 
 Options.ClassLabels = InpClassStrings;
 Options.ClassLabels(end+1:2*end) = Options.ClassLabels(end:-1:1);
 
-AccuracyVector = InputResults.AccuraciesVector;
+AccuracyVector = InpRes.AccuraciesVector;
 
-MaxAccThreshold = Options.GoodAccuracyThreshold * nanmax(InputResults.AccuraciesVector);
+MaxAccThreshold = Options.GoodAccuracyThreshold * nanmax(InpRes.AccuraciesVector);
 
 GoodOnes = find(AccuracyVector > MaxAccThreshold);
 fprintf('\nThe good classifiers'' count is: %u\n',length(GoodOnes));
-Sample = InputResults.ConfusionMatrices(1).Fold01;
+Sample = InpRes.ConfusionMatrices(1).Fold01;
 
 TotalConMat = zeros(size(Sample));
 
-BaselineValue = ACD_ContributionBaseValue_v16p0(InputResults.ClassesData.InputClasses);
+BaselineValue = ACD_ContributionBaseValue_v3p0p0(InpRes.ClassesData.InputClasses);
 Count = 0;
-for iCtr=1:length(GoodOnes)
+for iCtr=1:length(GoodOnes) , GoodInd = GoodOnes(iCtr);
     Count = Count+1;
     
-    for fCtr=1:InputResults.Options.FoldCount,	fStr = sprintf('Fold%02u',fCtr);
-        LastOne = InputResults.ConfusionMatrices(iCtr).(fStr);
+    for fCtr=1:InpRes.Options.FoldCount,	fStr = sprintf('Fold%02u',fCtr);
+        LastOne = InpRes.ConfusionMatrices(GoodInd).(fStr);
 %         nansum(LastOne,1)
-        AddedMatrix = LastOne'* (AccuracyVector(iCtr) - BaselineValue);% ./ nansum(LastOne(:));
+        AddedMatrix = LastOne'* (AccuracyVector(GoodInd) - BaselineValue);% ./ nansum(LastOne(:));
         AddedMatrix(AddedMatrix < 0) = 0;
     end
     TotalConMat = TotalConMat + AddedMatrix;
@@ -66,16 +71,16 @@ h = colorbar;
 ylabel(h, 'Accuracy in Predicting Class');
 caxis([nanmin(TotalConMat(:)) nanmax(TotalConMat(:))]);
 % axis equal;
-title(sprintf('Confusion Matrix for\n%s Classification',Options.Dataset));
+title(sprintf('Confusion Matrix for\n%s Classification\nAverage Top Classifier''s Accuracy = \\color{red}%5.2f%%',Options.Dataset,nanmean(AccuracyVector(GoodOnes))*100));
 
 %%
 ClassCount = nansum(LastOne,2);
-ClassCount = sprintf('%u Instances',ClassCount(1)*InputResults.ClassesData.MetaData.FoldCnt);
+ClassCount = sprintf('%u Instances',ClassCount(1)*InpRes.ClassesData.MetaData.FoldCnt);
 
 RTWT_Real = {};
 RTWT_Pred = {};
 for iCtr=1:length(Options.ClassLabels)
-    RTWT_Pred{iCtr} = ['\bfPredicted\newline' Options.ClassLabels{iCtr}];
+    RTWT_Pred{iCtr} = ['\bfPredicted\newline' Options.ClassLabels{iCtr}]; %#ok<*AGROW>
     RTWT_Real{iCtr} = [' {\bfClass}\newline '   '{\bf' Options.ClassLabels{iCtr} '}' '\newline' ClassCount '\newlineEqual to 100%'];
 end
 

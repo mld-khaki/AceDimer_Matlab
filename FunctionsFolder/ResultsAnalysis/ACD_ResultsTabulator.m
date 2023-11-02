@@ -5,11 +5,16 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/25  11:05 Updated to new v.2 $
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
+% $Revision: 3.3.0 $  $Date: _2022_05_09___18_45_33_Mon  Conforming to the ACD_AUX_CalculateContributions_v3p3p0 updating the calculation of each feature's confusion matrix
+% $Revision: 3.3.1 $  $Date: 2022/04/17  Speed optimization
 
-function [AnalysisOut, SROut,Rankings] = ACD_ResultsTabulator_v2p0p0(Version,InputFolderOfResults,Top_N_Percent,SRIn,AnalysisInp)
-CurrentVersion = 'AceDimer2p0p0';
 
+function [AnalysisOut, Rankings] = ACD_ResultsTabulator_v3p3p1(Version,AnalysisResults,Top_N_Percent)
+CurrentVersion = 'AceDimerV3p0p0';
+IgnoreBaseContribution = true;
 if strcmpi(CurrentVersion,Version) == 0
     error('Versions don''t match!!, The function''s version is %s, and the caller function''s version is %s',CurrentVersion,Version);
 end
@@ -24,15 +29,7 @@ end
 % Running ResultsTabulator without SR structure array and Analysis outputvariable for recalculation
 % [AnalysisVar,SRVar] = ResultsTabulator('.\Scenario_A\','.\Data\NeuroMetrics_Raw.mat','StagesRW',0.95,SRVar,AnalysisVar)
 %
-clc
-if InputFolderOfResults(end) ~= '\'
-	InputFolderOfResults(end+1) = '\';
-end
-
-AnalysisOut = [];
-if exist('SRIn','var')
-	SROut = SRIn;
-end
+AnalysisOut = struct;
 
 
 
@@ -42,161 +39,101 @@ end
 % 	InputDataVar = load(InputData);
 % end
 
-ResultStats = [];
-FeaturesAr = [];
+ResultStats = struct;
+FeaturesAr = struct;
 if exist('AnalysisInp','var')
 	MaxAccuracy = AnalysisInp.MaxAccuracy;
 end
 
-
-
-if exist('SRIn','var')
-	SR = SRIn;
-else
-	SR = [];
-	if exist([InputFolderOfResults '\Dbl_Res__CAt02'],'dir') > 0
-		FilesList = dir([InputFolderOfResults '\Dbl*']);
-		for fCtr=1:length(FilesList)
-			fprintf('\n\tFCtr=%u, File: "%s"...',fCtr,FilesList(fCtr).name);
-	% 		SR(fCtr).SR = load([InputFolderOfResults FilesList(fCtr).name]);
-			if length(dir([InputFolderOfResults FilesList(fCtr).name '\*.mat'])) > 0
-				SR(fCtr).SR.SaveResults = ACD_LoadBigArray('SaveResults',[InputFolderOfResults FilesList(fCtr).name '\'],false,'V2');
-			else
-				SR(fCtr).SR.SaveResults = ACD_LoadBigData([InputFolderOfResults FilesList(fCtr).name],'SaveResults',{'ConfusionMatrices'});
-			end
-		end
-	else
-		FilesList = dir([InputFolderOfResults '\*.mat']);
-		for fCtr=1:length(FilesList)
-			fprintf('\n\tFCtr=%u, File: "%s"...',fCtr,FilesList(fCtr).name);
-			FileNamePath = ACD_CombineDirectoryWithFileFold(InputFolderOfResults,FilesList(fCtr).name);
-			SR(fCtr).SR = load(FileNamePath);
-		end
-	end
+if ~isfield(AnalysisResults,'Rounds')
+	error('AnalysisResults input does not have AceDimer''s round information!');
 end
 
-if exist('SR','var')
-	if ~exist('MaxAccuracy','var')
-		MaxAccuracy = -inf;
-	end
-	
-	for fCtr=1:length(SR)
-		fprintf('\n\tFCtr=%u, File: "%s"...',fCtr,FilesList(fCtr).name);
-		if isfield(SR(fCtr).SR,'SaveResults')
-			if isfield(SR(fCtr).SR.SaveResults,'AccuraciesVector')
-				MaxAccuracy = nanmax([MaxAccuracy SR(fCtr).SR.SaveResults.AccuraciesVector]);
-			end
-		end
-	end
 
-	if ~isempty(SR)
-		for iCtr=1:length(SR)
-			CurSR = SR(iCtr).SR.SaveResults;
-			if isempty(CurSR), continue;end
-			if ~isempty(CurSR)
-				FeaturesCountsOrg = zeros(1,length(CurSR(1).Features));
-				FeaturesCounts = FeaturesCountsOrg;
-				break;
-			end
-		end
-	end
-end
+MaxAccuracy = -inf;
+FeaturesCountsOrg = zeros(1,length(AnalysisResults.Rounds(1).Features));
+FeaturesCounts = FeaturesCountsOrg;
 
-if ~exist('FeaturesCountsOrg','var') || ~exist('CurSR','var')
-	CurSR = struct;
-    CurSR.SaveResults = struct;
-    for iCtr=1:length(SR)
-		CurSR = SR(iCtr).SR.SaveResults;
-		if isempty(CurSR), continue;end
-		if ~isempty(CurSR)
-			FeaturesCountsOrg = zeros(1,length(CurSR(1).Features));
-			FeaturesCounts = FeaturesCountsOrg;
-			break;
-		end
-	end
-end
+MaxThreshold = nanmean(AnalysisResults.Rounds(1).AccuraciesVector);
 
-MaxThreshold = nanmean(CurSR.AccuraciesVector);
-
-if ~exist('MaxAccuracy','var')
-	error('Max Accuracy is not calculated via folders or input');
-end
-
-for fCtr=1:length(SR)
-	if ~isfield(SR(fCtr).SR,'SaveResults'), continue;end
-	if ~isfield(SR(fCtr).SR.SaveResults,'AccuraciesVector'), continue;end
-	fprintf('\n\tFCtr=%u, File: "%s"...',fCtr,FilesList(fCtr).name);
+for roundCtr=1:length(AnalysisResults.Rounds)
+	[MaxVal, MaxInd] = nanmax (AnalysisResults.Rounds(roundCtr).AccuraciesVector); %#ok<*NANMAX> 
 	
-	CurSR = SR(fCtr).SR.SaveResults;
+	ResultStats(roundCtr).MaxAccuracy = MaxVal;
+	ResultStats(roundCtr).AvgAccuracy = nanmean(AnalysisResults.Rounds(roundCtr).AccuraciesVector);
+	ResultStats(roundCtr).FeatureCnt  = roundCtr+1;
 	
-	[MaxVal, MaxInd] = nanmax (CurSR.AccuraciesVector);
-	
-	ResultStats(fCtr).MaxAccuracy = MaxVal;
-	ResultStats(fCtr).AvgAccuracy = nanmean(CurSR.AccuraciesVector);
-	ResultStats(fCtr).FeatureCnt  = fCtr+1;
-	
-	MaxAccFeatureIndices = CurSR.AnalysisInfo.AllPossibleCombinations(MaxInd,:);
+	MaxAccFeatureIndices = AnalysisResults.Rounds(roundCtr).AnalysisInfo.AllPossibleCombinations(MaxInd,:);
 	
 	TopestFeatures = {};
 	for iCtr=1:length(MaxAccFeatureIndices)
-		TopestFeatures{iCtr} = CurSR.ClassesData.Features(MaxAccFeatureIndices(iCtr)).Name;
+		TopestFeatures{iCtr} = AnalysisResults.Rounds(roundCtr).ClassesData.Features(MaxAccFeatureIndices(iCtr)).Name; %#ok<*AGROW> 
 	end
 	
-	ResultStats(fCtr).TopFeatures  = TopestFeatures;
-	ResultStats(fCtr).TopFeatureNumbers = MaxAccFeatureIndices;
+	ResultStats(roundCtr).TopFeatures  = TopestFeatures;
+	ResultStats(roundCtr).TopFeatureNumbers = MaxAccFeatureIndices;
 	
-	TopClassifierIndices = find(CurSR.AccuraciesVector >= MaxThreshold);
+% 	TopClassifierIndices = find(AnalysisResults.Rounds(roundCtr).AccuraciesVector >= MaxThreshold);
+    TopClassifierIndices = 1:length(AnalysisResults.Rounds(roundCtr).AccuraciesVector);
 	CurFeaturesCounts = FeaturesCountsOrg;
-	for jCtr=TopClassifierIndices
-		FeatureIndices = CurSR.AnalysisInfo.AllPossibleCombinations(jCtr,:);
-		
-		CurFeaturesCounts(FeatureIndices) = CurFeaturesCounts(FeatureIndices) + 1;
+
+    tmpAllCombs = AnalysisResults.Rounds(roundCtr).AnalysisInfo.AllPossibleCombinations;
+    tmpAllCombs = tmpAllCombs(TopClassifierIndices,:);
+	for jCtr=1:size(tmpAllCombs,1)
+		CurFeaturesCounts(tmpAllCombs(jCtr,:)) = CurFeaturesCounts(tmpAllCombs(jCtr,:)) + 1;
 	end
 	
 	
 	FeaturesCounts = FeaturesCounts + CurFeaturesCounts;
-	ResultStats(fCtr).FeatureCountsAgg = FeaturesCounts;
-	ResultStats(fCtr).FeatureCountsCurrent = CurFeaturesCounts;
+	ResultStats(roundCtr).FeatureCountsAgg = FeaturesCounts;
+	ResultStats(roundCtr).FeatureCountsCurrent = CurFeaturesCounts;
 
 	CurFeaturesCounts(CurFeaturesCounts == 0) = [];
-% 	if ~isempty(CurFeaturesCounts)
-% 		IncludedFeatures = FindTopFeatures(CurFeaturesCounts);
-% 	end
 	
 	
-	ResultStats(fCtr).TopClassifierCount = length(TopClassifierIndices);
-	ResultStats(fCtr).HighestAccuracy = MaxVal;
+	ResultStats(roundCtr).TopClassifierCount = length(TopClassifierIndices);
+	ResultStats(roundCtr).HighestAccuracy = MaxVal;
 	
-	ResultStats(fCtr).FeatureCntSTD = nanstd(CurFeaturesCounts);
-	ResultStats(fCtr).FeatureCntAVG = nanmean(CurFeaturesCounts);
+	ResultStats(roundCtr).FeatureCntSTD = nanstd(CurFeaturesCounts);
+	ResultStats(roundCtr).FeatureCntAVG = nanmean(CurFeaturesCounts); %#ok<*NANMEAN> 
 	
 	NormCurFeaturesCounts = CurFeaturesCounts / length(TopClassifierIndices);
-	ResultStats(fCtr).FeatureCntSTD_Nrmlzd = nanstd(NormCurFeaturesCounts);
-	ResultStats(fCtr).FeatureCntAVG_Nrmlzd = nanmean(NormCurFeaturesCounts);
-	ResultStats(fCtr).AvailableFeatures = nansum(CurFeaturesCounts > 0);
+	ResultStats(roundCtr).FeatureCntSTD_Nrmlzd = nanstd(NormCurFeaturesCounts); %#ok<*NANSTD> 
+	ResultStats(roundCtr).FeatureCntAVG_Nrmlzd = nanmean(NormCurFeaturesCounts); %#ok<NANMEAN> 
+	ResultStats(roundCtr).AvailableFeatures = nansum(CurFeaturesCounts > 0); %#ok<*NANSUM> 
 	
-	CurFeaturesCounts = CurFeaturesCounts ./ nansum(CurFeaturesCounts);
+    CurRoundAnalysisResults = AnalysisResults.Rounds(roundCtr);
+
+    if roundCtr == 1
+        PrvRoundAnalysisResults = [];
+    else
+        PrvRoundAnalysisResults = AnalysisResults.Rounds(roundCtr-1);
+    end
+%     ContAnalysisRes = ACD_AUX_CalculateContributions_v3p0p0(Version,...
+% 		AnalysisResults.Rounds(SelRes),AnalysisResults.Rounds(SelRes-1),...
+% 		true,false,Top_N_Percent);%,InputDataVar.D_FeatureWeights);
+
+    ContAnalysisRes = ACD_AUX_CalculateContributions_v3p3p1(Version,...
+		CurRoundAnalysisResults,PrvRoundAnalysisResults,...
+		true,IgnoreBaseContribution,Top_N_Percent);%,InputDataVar.D_FeatureWeights);
+
+	ResultStats(roundCtr).FeatureContWOrgOrder = ContAnalysisRes.FeatureContWOrgOrder;
+    ResultStats(roundCtr).IndividualFeaturesCount = ContAnalysisRes.IndividualFeaturesCount;
+
+	ResultStats(roundCtr).HighAccMean = nanmean(AnalysisResults.Rounds(roundCtr).AccuraciesVector(TopClassifierIndices));
+	ResultStats(roundCtr).HighAccCnt = length(TopClassifierIndices);
 	
-	
-    ContAnalysisRes = ACD_AUX_CalculateContributions_v2p0p0('AceDimer2p0p0',...
-		CurSR,...
-		1,false,Top_N_Percent);%,InputDataVar.D_FeatureWeights);
-	
-	ResultStats(fCtr).FeatureContWOrgOrder = ContAnalysisRes.FeatureContWOrgOrder;
-	ResultStats(fCtr).HighAccMean = nanmean(CurSR.AccuraciesVector(TopClassifierIndices));
-	ResultStats(fCtr).HighAccCnt = length(TopClassifierIndices);
-	
-	FeaturesAr(fCtr).FeaturesDesc = CurSR.Features;
+	FeaturesAr(roundCtr).FeaturesDesc = AnalysisResults.Rounds(roundCtr).Features;
+	FeaturesAr(roundCtr).Features = ContAnalysisRes.Features;
 	if ~exist('Rankings','var')
-		Rankings = {ContAnalysisRes.OutFeatures};
+		Rankings = {ContAnalysisRes.Features};
 	else
-		Rankings{fCtr} = ContAnalysisRes.OutFeatures;
+		Rankings{roundCtr} = ContAnalysisRes.Features;
 	end
 end
 fprintf(newline);
 
 AnalysisOut = [];
-SROut = SR;
 AnalysisOut.ResultStats = ResultStats;
 AnalysisOut.MaxAccuracy = MaxAccuracy;
 AnalysisOut.FeaturesAr = FeaturesAr;
