@@ -12,7 +12,7 @@
 % $Revision: 3.3.1 $  $Date: 2022/04/17  Speed optimization
 
 
-function [AnalysisOut, Rankings] = ACD_ResultsTabulator_v3p3p1(Version,AnalysisResults,Top_N_Percent)
+function [AnalysisOut, Rankings] = ACD_ResultsTabulator(Version,AnalysisResults,Top_N_Percent)
 CurrentVersion = 'AceDimerV3p0p0';
 IgnoreBaseContribution = true;
 if strcmpi(CurrentVersion,Version) == 0

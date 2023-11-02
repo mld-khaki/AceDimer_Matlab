@@ -23,7 +23,7 @@ for SessionCtr = 1%:length(Data)	,
 	Options.StartTime = datestr(now,'yyyy_mm_dd__HH_MM_SS');
 	Options.ClassVarName = 'ClsCondition';
 	Options.AttributeNamesVariable = 'ChannelNames';
-	Options.Version = 'AceDimer16p0';
+	Options.Version = 'AceDimerV2p1p0';
 	Options.AttributesVarName = Options.ArrayName;
 	Options.Forward1Reverse0 = true;
 	Options.HoursLimit = 2;
@@ -108,7 +108,7 @@ for SessionCtr = 1%:length(Data)	,
 					ForceBalancing = true;
 					
 					
-					ClassesData.(CurrentClass) = ClassificationData_v16p0(Options.Version,'InputFilePath',FilePath,...
+					ClassesData.(CurrentClass) = ClassificationData_v2p1p0(Options.Version,'InputFilePath',FilePath,...
 						'TrainingObsPrefix', 'ClassificationFeatures' , 'TrainingObsPostfix', '',...
 						'TrainingClsPrefix', '' , 'TrainingClsPostfix', 'ClsCondition',...
 						'TestingObsPrefix' , 'ClassificationFeatures' , 'TestingObsPostfix',  '',...
@@ -164,9 +164,9 @@ for SessionCtr = 1%:length(Data)	,
 						TrainerConfig.MinAttributeCount = CurrentAttributeCount;
 						TrainerConfig.MaxAttributeCount = CurrentAttributeCount;
 						if TrainerConfig.MaxAttributeCount > 2 %Last analysis was successfull
-							[UpdatedVector.(dpStr), UpdatedCount.(dpStr)] = ACD_CalculateNextSetCount_Global_v16p0(TempResults.(dpStr),ClassesData.(dpStr),AnalysisInfo.(dpStr),TrainerConfig,Options);
+							[UpdatedVector.(dpStr), UpdatedCount.(dpStr)] = ACD_CalculateNextSetCount_Global_v2p1p0(TempResults.(dpStr),ClassesData.(dpStr),AnalysisInfo.(dpStr),TrainerConfig,Options);
 							
-							ClassesData.(dpStr) = ClassesData.(dpStr).CD_UpdateVariablesWithNewUsableFeatures_v16p0(UpdatedVector.(dpStr));
+							ClassesData.(dpStr) = ClassesData.(dpStr).CD_UpdateVariablesWithNewUsableFeatures_v2p1p0(UpdatedVector.(dpStr));
 							
 							AnalysisInfo.(dpStr).FeatureCnt = UpdatedCount;
 						end
@@ -182,12 +182,12 @@ for SessionCtr = 1%:length(Data)	,
 						
 						TrainerConfig.CurrentState = dpStr;
 						TrainerConfig.ChanceAccuracy = 1/length(unique(ClassesVar));
-						[TempResults.(dpStr),AnalysisInfo.(dpStr)] = ACD_NeuronCombinedClassifier_Global_v16p0(AnalysisInfo.(dpStr),ClassesData.(dpStr),DispInfoLevel,OthersInfo.(dpStr),TrainerConfig,Options);
+						[TempResults.(dpStr),AnalysisInfo.(dpStr)] = ACD_NeuronCombinedClassifier_Global2_v2p1p0(AnalysisInfo.(dpStr),ClassesData.(dpStr),DispInfoLevel,OthersInfo.(dpStr),TrainerConfig,Options);
 						
 						if TrainerConfig.MaxAttributeCount > 2
-							[UpdatedVector.(dpStr), UpdatedCount.(dpStr)] = ACD_CalculateNextSetCount_Global_v16p0(TempResults.(dpStr),ClassesData.(dpStr),AnalysisInfo.(dpStr),TrainerConfig,Options);
+							[UpdatedVector.(dpStr), UpdatedCount.(dpStr)] = ACD_CalculateNextSetCount_Global_v2p1p0(TempResults.(dpStr),ClassesData.(dpStr),AnalysisInfo.(dpStr),TrainerConfig,Options);
 							
-							ClassesData.(dpStr) = ClassesData.(dpStr).CD_UpdateVariablesWithNewUsableFeatures_v16p0(UpdatedVector.(dpStr));
+							ClassesData.(dpStr) = ClassesData.(dpStr).CD_UpdateVariablesWithNewUsableFeatures_v2p1p0(UpdatedVector.(dpStr));
 							
 							AnalysisInfo.(dpStr).FeatureCnt = UpdatedCount;
 						end
@@ -197,7 +197,7 @@ for SessionCtr = 1%:length(Data)	,
 						TrainerConfig.ProcessModeTimer = -1;
 						
 						TrainerConfig.CurrentState = dpStr;
-						[TempResults.(dpStr),AnalysisInfo.(dpStr)] = ACD_NeuronCombinedClassifier_Global_v16p0(AnalysisInfo.(dpStr),ClassesData.(dpStr),DispInfoLevel,OthersInfo.(dpStr),TrainerConfig,Options);
+						[TempResults.(dpStr),AnalysisInfo.(dpStr)] = ACD_NeuronCombinedClassifier_Global_v2p1p0(AnalysisInfo.(dpStr),ClassesData.(dpStr),DispInfoLevel,OthersInfo.(dpStr),TrainerConfig,Options);
 						
 						Output.(dpStr) = TempResults.(dpStr);
 						

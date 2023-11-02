@@ -117,7 +117,7 @@ function count = ACD_cprintf(style,format,varargin)
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
 % Further updated by and copyrighted by Milad Khaki:
 % AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
 
   persistent majorVersion minorVersion
   if isempty(majorVersion)

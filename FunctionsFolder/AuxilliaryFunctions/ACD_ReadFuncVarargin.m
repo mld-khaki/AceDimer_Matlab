@@ -5,7 +5,9 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/20  11:05 Updated to new v.2 $
+
 function OutSt = ACD_ReadFuncVarargin(varargin)
 varargin = varargin{1};
 if ~iscell(varargin)

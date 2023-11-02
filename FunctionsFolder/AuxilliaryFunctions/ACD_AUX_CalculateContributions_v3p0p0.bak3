@@ -1,0 +1,232 @@
+% Internal function of AceDimer Toolbox
+%
+% License to use and modify this code is granted freely to all interested, as long as the original author is
+% referenced and attributed as such. The original author maintains the right to be solely associated with this work.
+
+% Programmed and Copyright by Milad Khaki:
+% Contact email: AceDimer.toolbox@gmail.com
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/10  Updating the contribution method
+function [AnalysisResults] = ACD_AUX_CalculateContributions_v2p0p0(Version,InpResults,BypassAccuracyCheck,IgnoreBaseContribution,Top_N_Percent)
+CurrentVersion = 'AceDimerV2p0p0';
+
+InpRes = InpResults(end);
+
+if strcmpi(CurrentVersion,Version) == 0
+    error('Versions don''t match!!, The function''s version is %s, and the caller function''s version is %s',CurrentVersion,Version);
+end
+
+SortedAccuraciesVector = sortrows(InpRes.AccuraciesVector',-1)';
+if nargin <= 2
+    BypassAccuracyCheck = 0;
+end
+
+if sum(InpRes.AccuraciesVector ~= 0) < length(InpRes.AccuraciesVector)*0.99 && (BypassAccuracyCheck == 0)
+    error('Accuracies vector contains unexpected number of zeros!');
+end
+TopNPercent = nanmax(SortedAccuraciesVector)*Top_N_Percent;
+
+assert(isnan(TopNPercent) == 0);
+%the array of Features has the length of All features. The only
+%difference is that the Enabled field of features indicate which ones are
+%enabled (1) or disabled (0)
+NumberOfFeatures = 0;%length(Features);
+FeaturesList = [];
+for iCtr=1:length(InpRes.Features)
+    if InpRes.Features(iCtr).Enabled == 1
+        NumberOfFeatures = NumberOfFeatures + 1;
+        FeaturesList(iCtr) = InpRes.Features(iCtr).Number;
+    else
+        FeaturesList(iCtr) = 0;
+    end
+end
+
+ClassesVector = [];
+for fCtr = 1:InpRes.ClassesData.GetFoldCount()
+    if strcmpi(class(InpRes.ClassesData),'ClassificationData_v14p4') == 1
+        ClassesVector = [ClassesVector InpRes.ClassesData.CD_GetTrainingCls_BOFoldNum_v14p4(fCtr)];
+    elseif strcmpi(class(InpRes.ClassesData),'ClassificationData_v14p5') == 1
+        ClassesVector = [ClassesVector InpRes.ClassesData.CD_GetTrainingCls_BOFoldNum_v14p5(fCtr)];
+    elseif strcmpi(class(InpRes.ClassesData),'ClassificationData_v16p0') == 1
+        ClassesVector = [ClassesVector InpRes.ClassesData.CD_GetTrainingCls_BOFoldNum_v16p0(fCtr)];
+    elseif strcmpi(class(InpRes.ClassesData),'ClassificationData_v2p0p0') == 1
+        ClassesVector = [ClassesVector InpRes.ClassesData.CD_GetTrainingCls_BOFoldNum_v2p0p0(fCtr)];
+    elseif strcmpi(class(InpPrvResults.ClassesData),'ClassificationData_v3p0p0') == 1
+        ClassesVector = [ClassesVector InpPrvResults.ClassesData.CD_GetTrainingCls_BOFoldNum_v3p0p0(fCtr)];
+    end
+end
+
+SortedIndFeaturesContrib = [];
+SortedIndFeaturesContrib.FeaturesOrgOrder = FeaturesList;
+
+if IgnoreBaseContribution == false
+    SortedIndFeaturesContrib.BaselineAccuracy = ACD_ContributionBaseValue_v2p0p0(ClassesVector);
+else
+    SortedIndFeaturesContrib.BaselineAccuracy = 0;
+end
+
+
+PairwiseFeaturesContributions = zeros(length(InpRes.Features),length(InpRes.Features));
+
+
+if length(InpResults) > 1
+    [ContributionData] = local_CalculateContrtibutionBasedOnPrevious(InpRes,InpResults,TopNPercent);
+else
+    [ContributionData] = local_CalculateContributionIndividually(InpRes,TopNPercent,SortedIndFeaturesContrib);
+end
+
+% % % % % % % % Hererrr
+
+FeatureContributionsWithOrgOrder = ContributionData.IndividualFeaturesContributions;
+
+OutFeatures = InpRes.Features;
+for iCtr=1:length(InpRes.Features)
+    OutFeatures(iCtr).Contribution = FeatureContributionsWithOrgOrder(iCtr);
+    OutFeatures(iCtr).Rank = nan;
+end
+
+% TempContributions = FeatureContributionsWithOrgOrder;
+% RankCtr = 0;
+% for iCtr=1:length(InpRes.Features)
+%     RankCtr = RankCtr+1;
+%     [MaxContrib,Ind] = nanmax(TempContributions);
+%     if isnan(Ind) || MaxContrib <= 0
+%         break;
+%     end
+%     TempContributions(Ind) = nan;
+%     OutFeatures(Ind).Rank = RankCtr;
+% end
+
+FeatureContributionsWithOrgOrder = FeatureContributionsWithOrgOrder / nansum(ContributionData.MaxividualFeaturesContributions);
+
+AnalysisResults = struct;
+AnalysisResults.FeatureContWOrgOrder = FeatureContributionsWithOrgOrder;
+AnalysisResults.OutFeatures = OutFeatures;
+AnalysisResults.BaseContribution = SortedIndFeaturesContrib.BaselineAccuracy;
+end
+
+function [OutSize, OutIndex] = local_LongSize(Input)
+if size(Input,1) < size(Input,2)
+    OutSize = size(Input,2);
+    OutIndex = 2;
+else
+    OutSize = size(Input,1);
+    OutIndex = 1;
+end
+end
+
+function [Out] = local_CalculateContrtibutionBasedOnPrevious(InpRes,InpResults,TopNPercent)
+[CombinationLength, ~ ] = local_LongSize(InpRes.AnalysisInfo.AllPossibleCombinations);
+Out = struct;
+Out.IndividualFeaturesContributions = zeros(1,length(InpRes.Features));
+Out.MaxividualFeaturesContributions = zeros(1,length(InpRes.Features));
+Out.IndividualFeaturesCount = zeros(1,length(InpRes.Features));
+
+FeatureFreq = zeros(1,length(InpRes.Features));
+for combinationCtr=1:CombinationLength
+    if InpRes.AccuraciesVector(combinationCtr) < TopNPercent
+        continue;
+    end
+    Vector = InpRes.AnalysisInfo.AllPossibleCombinations(combinationCtr,:);
+    Vector(Vector == 0) = [];
+    for featureCtr=1:length(Vector)
+        FeatureFreq(Vector(featureCtr)) = FeatureFreq(Vector(featureCtr)) + 1;
+        
+    end
+end
+
+FeatureFreq = FeatureFreq / nansum(FeatureFreq);
+
+AllPossSortedCombinations = ACD_Contribution_Lookup_Preparation_v3p0p0(InpResults(end-1).AnalysisInfo.AllPossibleCombinations);
+ACD_Contribution_Lookup_Prv_Accuracy_v3p0p0(AllPossSortedCombinations,[],true);
+
+for combinationCtr=1:CombinationLength
+    if InpRes.AccuraciesVector(combinationCtr) < TopNPercent
+        continue;
+    end
+    Vector = InpRes.AnalysisInfo.AllPossibleCombinations(combinationCtr,:);
+    Vector(Vector == 0) = [];
+    
+    FeaturesWeight = FeatureFreq(Vector);
+    FeaturesWeight = FeaturesWeight ./ nansum(FeaturesWeight);
+    
+    for featureCtr=1:length(Vector)
+        PrvVect = Vector;
+        PrvVect(featureCtr) = [];
+        PrvInd = ACD_Contribution_Lookup_Prv_Accuracy_v3p0p0(AllPossSortedCombinations,PrvVect,false);
+        PrvAccuracy = InpResults(end-1).AccuraciesVector(PrvInd);
+        
+        CurrentFeature = Vector(featureCtr);
+        
+        ContributionIndv = InpRes.AccuraciesVector(combinationCtr) - PrvAccuracy;
+        
+        Out.IndividualFeaturesContributions(CurrentFeature) = Out.IndividualFeaturesContributions(CurrentFeature) + ContributionIndv;
+        Out.MaxividualFeaturesContributions(CurrentFeature) = Out.MaxividualFeaturesContributions(CurrentFeature) + ContributionIndv;
+        
+        Out.IndividualFeaturesCount(CurrentFeature) = Out.IndividualFeaturesCount(CurrentFeature) + 1;
+    end
+end
+end
+
+
+function [Out] = local_CalculateContributionIndividually(InpRes,TopNPercent,SortedIndFeaturesContrib)
+Out = struct;
+Out.IndividualFeaturesContributions = zeros(1,length(InpRes.Features));
+Out.MaxividualFeaturesContributions = zeros(1,length(InpRes.Features));
+Out.IndividualFeaturesCount = zeros(1,length(InpRes.Features));
+
+[CombinationLength, ~ ] = local_LongSize(InpRes.AnalysisInfo.AllPossibleCombinations);
+
+FeatureFreq = zeros(1,length(InpRes.Features));
+for combinationCtr=1:CombinationLength
+    if InpRes.AccuraciesVector(combinationCtr) < TopNPercent
+        continue;
+    end
+    Vector = InpRes.AnalysisInfo.AllPossibleCombinations(combinationCtr,:);
+    Vector(Vector == 0) = [];
+    for featureCtr=1:length(Vector)
+        FeatureFreq(Vector(featureCtr)) = FeatureFreq(Vector(featureCtr)) + 1;
+        
+    end
+end
+
+FeatureFreq = FeatureFreq / nansum(FeatureFreq);
+
+for combinationCtr=1:CombinationLength
+    if InpRes.AccuraciesVector(combinationCtr) < TopNPercent
+        continue;
+    end
+    Vector = InpRes.AnalysisInfo.AllPossibleCombinations(combinationCtr,:);
+    Vector(Vector == 0) = [];
+    
+    FeaturesWeight = FeatureFreq(Vector);
+    FeaturesWeight = FeaturesWeight ./ nansum(FeaturesWeight);
+    
+    
+    for featureCtr=1:length(Vector)
+        CurrentFeature = Vector(featureCtr);
+        CurrentFeaturesMapped = CurrentFeature;%FeatureWeights(CurrentFeature).FeatureWeight;
+        
+        ContributionMain =(InpRes.AccuraciesVector(combinationCtr) - SortedIndFeaturesContrib.BaselineAccuracy);
+        ContributionIndv = ContributionMain * FeaturesWeight(featureCtr);
+        ContributionIndv = ContributionIndv / length(CurrentFeaturesMapped);
+        ConfScore = ACD_AUX_ConfusionMatrixScore_v2p0p0(InpRes.ConfusionMatrices(combinationCtr));
+        ContributionIndv = ContributionIndv* ConfScore^2;
+        
+        ContributionMaxOverall = nanmax(InpRes.AccuraciesVector)-SortedIndFeaturesContrib.BaselineAccuracy;
+        ContributionMaxv = ContributionMaxOverall * FeaturesWeight(featureCtr);
+        ContributionMaxv = ContributionMaxv / length(CurrentFeaturesMapped);
+        if ContributionIndv > 0
+            for ciCtr=1:length(Vector)
+                FeatInd = Vector(ciCtr);
+                Out.IndividualFeaturesContributions(FeatInd) = Out.IndividualFeaturesContributions(FeatInd) + ContributionIndv;
+                Out.MaxividualFeaturesContributions(FeatInd) = Out.MaxividualFeaturesContributions(FeatInd) + ContributionMaxv;
+                
+                Out.IndividualFeaturesCount(FeatInd) = Out.IndividualFeaturesCount(FeatInd) + (1/ length(CurrentFeaturesMapped));
+            end
+        elseif isnan(ContributionIndv)
+            continue;
+        end
+    end
+end
+end

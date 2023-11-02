@@ -5,7 +5,9 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/20  11:05 Updated to new v.2 $
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
 
 clearvars -except TrainClass TrainData
 if ~exist('TrainData','var')
@@ -24,9 +26,9 @@ TstObserve = TrainData(hpartition.test,:);
 TstClasses = TrainClass(hpartition.test);
 
 
-LDA_Model = ACD_LDA_v16p1(TrnObserve,TrnClasses);
+LDA_Model = ACD_LDA_v3p0p0(TrnObserve,TrnClasses);
 
-LDA_Predictions = ACD_LDA_Predict_v16p1(LDA_Model,TstObserve);
+LDA_Predictions = ACD_LDA_Predict_v3p0p0(LDA_Model,TstObserve);
 
 CorrectClassifications = nansum(LDA_Predictions == TstClasses);
 

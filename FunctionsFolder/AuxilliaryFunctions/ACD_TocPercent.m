@@ -5,7 +5,10 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/20  11:05 Updated to new v.2 $
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
+
 function [StringOut,TicStart] = ACD_TocPercent(TicStart,CurrentCnt,StartCnt,MaxCnt)
 if nargin <= 0
     TicStart = [];
@@ -26,7 +29,7 @@ if Difference < TicStart.DefaultPercentageTime
     TicStart.Misses = TicStart.Misses+1;
     return;
 else
-    StringOut = sprintf('Processing...time since last display = %s, # of misses = %u\n%s',GenerateTotalDurationStr(toc(TicStart.LastTic)),TicStart.Misses,ACD_ProjectedFinishCalculator_v16p0(toc(TicStart.tic),CurrentCnt,MaxCnt,StartCnt));
+    StringOut = sprintf('Processing...time since last display = %s...\n%s',GenerateTotalDurationStr(toc(TicStart.LastTic)),ACD_ProjectedFinishCalculator_v3p0p0(toc(TicStart.tic),CurrentCnt,MaxCnt,StartCnt));
     TicStart.LastTic = tic;
     TicStart.Misses = 0;
     if Difference > 1.5*TicStart.DefaultPercentageTime

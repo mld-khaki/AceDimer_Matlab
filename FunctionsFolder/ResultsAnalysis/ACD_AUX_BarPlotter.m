@@ -11,7 +11,10 @@
 % $Revision: 4.0.0 $  $Date: _2022_06_14___23_38_10_Tue  Generalized plotter $
 
 
-function BarPlots = ACD_AUX_BarPlotter__v4p3p0(Contributions,YLabels,FigH1,BarWidth,Title,SortEnabled,NTopContributors,Percentage)
+function BarPlots = ACD_AUX_BarPlotter(Contributions,YLabels,FigH1,BarWidth,Title,SortEnabled,NTopContributors,SeqNum)
+if ~exist('SeqNum','var')
+    SeqNum = 1:NTopContributors;
+end
 
 if FigH1 ~= -1
     figure(FigH1);
@@ -38,12 +41,7 @@ else
     BarHValuesTemp.Value = BarHValues;
     BarHValuesTemp.Index = 1:length(BarHValues);
 end
-
-if Percentage == true
-    CombinedBarHValues = nansum(nansum((BarHValues)));
-else
-    CombinedBarHValues = 1;
-end
+CombinedBarHValues = nansum(nansum((BarHValues)));
 
 PlotCounter = 1;
 BarPlots = [];

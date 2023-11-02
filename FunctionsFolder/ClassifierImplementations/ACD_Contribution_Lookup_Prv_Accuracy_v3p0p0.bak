@@ -1,0 +1,79 @@
+% Internal function of AceDimer Toolbox
+%
+% License to use and modify this code is granted freely to all interested, as long as the original author is
+% referenced and attributed as such. The original author maintains the right to be solely associated with this work.
+
+% Programmed and Copyright by Milad Khaki:
+% Contact email: AceDimer.toolbox@gmail.com
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/20  11:05 Updated to new v.2 $
+% $Revision: 2.0.1 $  $Date: 2021/05/25  11:05 Updated to new v.2 $
+% $Revision: 2.0.3 $  $Date: 2021/05/26  20:40 Updated the mapping scheme to materializing the "AllCombs" variable on the folder
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
+
+function Out = ACD_Contribution_Lookup_Prv_Accuracy_v3p0p0(InpAllCombinations,InpVect,Reset,PrvSize)
+% AllCombsFileName = sprintf('AllFeat_%03u___SetFeat_%03u.mat',Options.AllFeaturesCount,Options.SetFeaturesCount);
+% if isfield(Options,'ToolsDirectory')
+%     FolderPath = Options.ToolsDirectory;
+% else
+%     FolderPath = pwd;
+% end
+
+persistent AllCombs1
+persistent AllCombs2
+persistent AllFields1
+persistent AllFields2
+
+if Reset == 1 && PrvSize == 1
+%     FilePathName = [FolderPath '\' AllCombsFileName];
+%     if exist(FilePathName)
+%         AllCombs = load(FilePathName);
+%     else
+    AllFields1 = {};
+    AllFields1{nanmax(InpAllCombinations(:))} = '';
+    for iCtr=1:nanmax(InpAllCombinations(:))
+        AllFields1{iCtr} = sprintf('M%04u',iCtr);
+    end
+    AllCombs1 = struct;
+    Vect = {};
+    for iCtr=1:size(InpAllCombinations,1)
+        for qCtr=1:size(InpAllCombinations,2)
+            Vect{qCtr} = AllFields1{InpAllCombinations(iCtr,qCtr)};
+        end
+        AllCombs1 = setfield(AllCombs1,Vect{:},iCtr);
+    end
+%     end
+    Out = nan;
+elseif Reset == 1 && PrvSize == 2
+    AllFields2 = {};
+    AllFields2{nanmax(InpAllCombinations(:))} = '';
+    for iCtr=1:nanmax(InpAllCombinations(:))
+        AllFields2{iCtr} = sprintf('M%04u',iCtr);
+    end
+    AllCombs2 = struct;
+    Vect = {};
+    for iCtr=1:size(InpAllCombinations,1)
+        for qCtr=1:size(InpAllCombinations,2)
+            Vect{qCtr} = AllFields2{InpAllCombinations(iCtr,qCtr)};
+        end
+        AllCombs2 = setfield(AllCombs2,Vect{:},iCtr);
+    end
+%     end
+    Out = nan;
+else
+    Fields = {};
+    if PrvSize == 1
+        for qCtr=1:length(InpVect)
+            Fields{qCtr} = AllFields1{InpVect(qCtr)};
+        end
+        Out = getfield(AllCombs1,Fields{:});
+    elseif PrvSize == 2
+        for qCtr=1:length(InpVect)
+            Fields{qCtr} = AllFields2{InpVect(qCtr)};
+        end
+        Out = getfield(AllCombs2,Fields{:});
+    end
+end
+
+end
+
