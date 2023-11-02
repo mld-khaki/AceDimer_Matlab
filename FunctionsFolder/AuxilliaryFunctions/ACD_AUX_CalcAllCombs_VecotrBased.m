@@ -5,8 +5,11 @@
 
 % Programmed and Copyright by Milad Khaki:
 % Contact email: AceDimer.toolbox@gmail.com
-% $Revision: 16.0 $  $Date: 2021/05/07  14:08 $
-function Out = ACD_AUX_CalcAllCombs_VecotrBased_v16p0(InputVector,CombCnt)
+% $Revision: 1.6.0 $  $Date: 2021/05/07  14:08 $
+% $Revision: 2.0.0 $  $Date: 2021/05/20  11:05 Updated to new v.2 $
+% $Revision: 3.0.0 $  $Date: 2022/04/17  NeurIPS Paper updates $
+
+function Out = ACD_AUX_CalcAllCombs_VecotrBased_v3p0p0(InputVector,CombCnt)
 if length(InputVector) == 1
     error('This version of the program works with input vector!');
 end
@@ -18,7 +21,7 @@ end
 % end
 
 
-Out = combnk(1:length(InputVector),CombCnt);
+Out = nchoosek(1:length(InputVector),CombCnt);
 if ACD_SizeShort(Out) == 1
 	Out = Out';
 end
